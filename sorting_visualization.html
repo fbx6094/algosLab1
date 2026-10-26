@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Визуализация сортировок</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #172033;
+      --muted: #64748b;
+      --accent: #2563eb;
+      --compare: #f59e0b;
+      --swap: #ef4444;
+      --sorted: #22c55e;
+      --bar: #93c5fd;
+      --border: #dbe3ef;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    }
+
+    .container {
+      width: min(1100px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 42px;
+    }
+
+    h1 { margin: 0 0 8px; }
+    h2 { margin: 0 0 8px; font-size: 1.15rem; }
+    p { margin: 6px 0; }
+    .subtitle, .hint { color: var(--muted); }
+
+    .panel, .visual-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 5px 18px rgba(30, 64, 175, 0.06);
+    }
+
+    .panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin: 22px 0 16px;
+      padding: 14px;
+    }
+
+    button, input[type="range"] { accent-color: var(--accent); }
+
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 9px 14px;
+      background: var(--accent);
+      color: white;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    button.secondary { background: #e8eef9; color: var(--text); }
+    button:disabled { cursor: not-allowed; opacity: .55; }
+
+    label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted);
+    }
+
+    input[type="number"] {
+      width: 70px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      padding: 8px;
+      font: inherit;
+    }
+
+    .visual-card { padding: 18px; }
+
+    #bars {
+      height: 330px;
+      display: flex;
+      align-items: end;
+      gap: 4px;
+      padding: 12px 4px 0;
+      border-bottom: 2px solid var(--border);
+    }
+
+    .bar {
+      flex: 1 1 0;
+      min-width: 4px;
+      max-width: 42px;
+      height: 20%;
+      border-radius: 5px 5px 0 0;
+      background: var(--bar);
+      position: relative;
+      transition: height .16s ease, background .16s ease, transform .16s ease;
+    }
+
+    .bar span {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 3px;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .bar.compare { background: var(--compare); transform: translateY(-5px); }
+    .bar.swap { background: var(--swap); transform: translateY(-5px); }
+    .bar.sorted { background: var(--sorted); }
+
+    .legend, .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      margin-top: 14px;
+    }
+
+    .legend span::before {
+      content: "";
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      margin-right: 5px;
+      border-radius: 3px;
+      vertical-align: -1px;
+      background: var(--bar);
+    }
+
+    .legend .compare::before { background: var(--compare); }
+    .legend .swap::before { background: var(--swap); }
+    .legend .sorted::before { background: var(--sorted); }
+
+    .stats strong { color: var(--accent); }
+    #status { min-height: 28px; margin-top: 14px; color: var(--muted); }
+
+    .explanation {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .explanation article {
+      padding: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+
+    @media (max-width: 760px) {
+      .explanation { grid-template-columns: 1fr; }
+      #bars { height: 260px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <h1>Как работают алгоритмы сортировки</h1>
+    <p class="subtitle">Интерактивная визуализация сортировки выбором, быстрой сортировки и сортировки вставками.</p>
+
+    <section class="panel">
+      <label>Элементов:
+        <input id="size" type="number" min="5" max="45" value="18">
+      </label>
+      <button id="newArray">Новый массив</button>
+      <button data-sort="selection">Сортировка выбором</button>
+      <button data-sort="quick">Быстрая сортировка</button>
+      <button data-sort="insertion">Сортировка вставками</button>
+      <button id="stop" class="secondary">Стоп</button>
+      <label>Скорость:
+        <input id="speed" type="range" min="1" max="100" value="55">
+      </label>
+    </section>
+
+    <section class="visual-card">
+      <div id="bars" aria-label="Визуализация массива"></div>
+      <div class="legend">
+        <span>обычный элемент</span>
+        <span class="compare">сравнение</span>
+        <span class="swap">перестановка</span>
+        <span class="sorted">готовый элемент</span>
+      </div>
+      <div class="stats">
+        <span>Сравнения: <strong id="comparisons">0</strong></span>
+        <span>Перестановки: <strong id="swaps">0</strong></span>
+        <span>Время анимации: <strong id="elapsed">0.0</strong> с</span>
+      </div>
+      <div id="status">Нажмите «Новый массив» или выберите алгоритм.</div>
+    </section>
+
+    <section class="explanation">
+      <article>
+        <h2>Сортировка выбором</h2>
+        <p>Ищет самый маленький элемент в неотсортированной части и ставит его в начало этой части.</p>
+      </article>
+      <article>
+        <h2>Быстрая сортировка</h2>
+        <p>Выбирает опорный элемент, разделяет массив на меньшие и большие значения, затем повторяет это для частей.</p>
+      </article>
+      <article>
+        <h2>Сортировка вставками</h2>
+        <p>Берёт следующий элемент и вставляет его на правильное место среди уже отсортированных элементов.</p>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const bars = document.getElementById("bars");
+    const sizeInput = document.getElementById("size");
+    const speedInput = document.getElementById("speed");
+    const statusEl = document.getElementById("status");
+    const comparisonsEl = document.getElementById("comparisons");
+    const swapsEl = document.getElementById("swaps");
+    const elapsedEl = document.getElementById("elapsed");
+
+    let values = [];
+    let comparisons = 0;
+    let swaps = 0;
+    let stopped = false;
+    let running = false;
+    let startedAt = 0;
+
+    function delay() {
+      return 25 + (100 - Number(speedInput.value)) * 4;
+    }
+
+    function makeArray() {
+      const count = Math.max(5, Math.min(45, Number(sizeInput.value) || 18));
+      values = Array.from({ length: count }, () => Math.floor(Math.random() * 90) + 10);
+      render();
+      resetStats();
+      statusEl.textContent = "Массив готов. Выберите алгоритм.";
+    }
+
+    function resetStats() {
+      comparisons = 0;
+      swaps = 0;
+      elapsedEl.textContent = "0.0";
+      updateStats();
+    }
+
+    function updateStats() {
+      comparisonsEl.textContent = comparisons;
+      swapsEl.textContent = swaps;
+    }
+
+    function render(highlight = [], mode = "compare", sorted = []) {
+      const max = Math.max(...values, 1);
+      bars.innerHTML = "";
+      values.forEach((value, index) => {
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.height = `${Math.max(8, value / max * 95)}%`;
+        if (highlight.includes(index)) bar.classList.add(mode);
+        if (sorted.includes(index)) bar.classList.add("sorted");
+        const label = document.createElement("span");
+        label.textContent = value;
+        bar.appendChild(label);
+        bars.appendChild(bar);
+      });
+    }
+
+    function wait(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function compare(indices, message) {
+      if (stopped) return false;
+      comparisons++;
+      updateStats();
+      statusEl.textContent = message;
+      render(indices, "compare");
+      await wait(delay());
+      return !stopped;
+    }
+
+    async function swap(i, j, message) {
+      if (stopped) return false;
+      [values[i], values[j]] = [values[j], values[i]];
+      swaps++;
+      updateStats();
+      statusEl.textContent = message;
+      render([i, j], "swap");
+      await wait(delay());
+      return !stopped;
+    }
+
+    async function selectionSort() {
+      const sorted = [];
+      for (let i = 0; i < values.length - 1; i++) {
+        let min = i;
+        for (let j = i + 1; j < values.length; j++) {
+          if (!await compare([min, j], `Ищем минимум справа от позиции ${i + 1}.`)) return;
+          if (values[j] < values[min]) min = j;
+        }
+        if (min !== i && !await swap(i, min, `Минимум найден: ставим ${values[min]} на позицию ${i + 1}.`)) return;
+        sorted.push(i);
+        render([], "compare", sorted);
+      }
+      sorted.push(values.length - 1);
+      finish(sorted);
+    }
+
+    async function quickSort(left, right) {
+      if (left > right || stopped) return;
+      let i = left;
+      let j = right;
+      const pivot = values[Math.floor((left + right) / 2) + 1] ?? values[left];
+      statusEl.textContent = `Опорный элемент: ${pivot}. Разделяем диапазон.`;
+      render([Math.floor((left + right) / 2) + 1], "compare");
+      await wait(delay());
+
+      while (i <= j) {
+        while (values[i] < pivot) {
+          if (!await compare([i], `Элемент ${values[i]} меньше опорного.`)) return;
+          i++;
+        }
+        while (values[j] > pivot) {
+          if (!await compare([j], `Элемент ${values[j]} больше опорного.`)) return;
+          j--;
+        }
+        if (i <= j) {
+          if (i !== j && values[i] !== values[j] &&
+              !await swap(i, j, `Меняем элементы по разные стороны от опорного.`)) return;
+          i++;
+          j--;
+        }
+      }
+      if (left < j) await quickSort(left, j);
+      if (i < right) await quickSort(i, right);
+    }
+
+    async function insertionSort() {
+      for (let i = 1; i < values.length; i++) {
+        let j = i;
+        statusEl.textContent = `Берём элемент ${values[i]} и вставляем его в левую часть.`;
+        while (j > 0) {
+          if (!await compare([j - 1, j], `Сравниваем ${values[j - 1]} и ${values[j]}.`)) return;
+          if (values[j - 1] <= values[j]) break;
+          if (!await swap(j - 1, j, "Сдвигаем больший элемент вправо.")) return;
+          j--;
+        }
+        render([], "compare", Array.from({ length: i + 1 }, (_, index) => index));
+        await wait(delay() / 2);
+      }
+      finish(values.map((_, index) => index));
+    }
+
+    function finish(sortedIndexes) {
+      if (stopped) return;
+      render([], "compare", sortedIndexes);
+      elapsedEl.textContent = ((performance.now() - startedAt) / 1000).toFixed(1);
+      statusEl.textContent = "Готово: массив отсортирован по возрастанию.";
+      running = false;
+      toggleButtons(false);
+    }
+
+    function toggleButtons(disabled) {
+      document.querySelectorAll("button").forEach(button => {
+        button.disabled = disabled && button.id !== "stop";
+      });
+    }
+
+    async function startSort(type) {
+      if (running) return;
+      running = true;
+      stopped = false;
+      resetStats();
+      toggleButtons(true);
+      startedAt = performance.now();
+      if (type === "selection") await selectionSort();
+      if (type === "quick") {
+        await quickSort(0, values.length - 1);
+        if (!stopped) finish(values.map((_, index) => index));
+      }
+      if (type === "insertion") await insertionSort();
+      if (stopped) {
+        running = false;
+        statusEl.textContent = "Анимация остановлена.";
+        toggleButtons(false);
+        render();
+      }
+    }
+
+    document.getElementById("newArray").addEventListener("click", makeArray);
+    document.getElementById("stop").addEventListener("click", () => { stopped = true; });
+    document.querySelectorAll("[data-sort]").forEach(button => {
+      button.addEventListener("click", () => startSort(button.dataset.sort));
+    });
+
+    makeArray();
+  </script>
+</body>
+</html>

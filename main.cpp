@@ -70,7 +70,7 @@ void quickSortInternal(vector<int>& arr, int left, int right, Sort& result) {
 
     int i = left;
     int j = right;
-    const int pivot = arr[(left + right) / 2];
+    const int pivot = arr[(left + right) / 2 + 1];
 
     while (i <= j) {
         while (arr[i] < pivot) {
